@@ -1,29 +1,78 @@
-
-name: Build APK
+name: Build Android APK
 
 on:
-  push:
   workflow_dispatch:
+  push:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # =========================
+      # GET SOURCE CODE
+      # =========================
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install
+      # =========================
+      # SYSTEM DEPENDENCIES (CRITICAL)
+      # =========================
+      - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-pip git zip unzip openjdk-17-jdk
-          pip install buildozer cython
+          sudo apt install -y \
+            python3-pip \
+            git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            build-essential \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libffi-dev \
+            libssl-dev \
+            cmake
 
-      - name: Build APK
+      # =========================
+      # PYTHON DEPENDENCIES
+      # =========================
+      - name: Install Python tools
         run: |
-          buildozer android debug
+          python3 -m pip install --upgrade pip
+          pip install cython buildozer
 
+      # =========================
+      # INIT BUILDOZER
+      # =========================
+      - name: Initialize Buildozer
+        run: |
+          buildozer init || true
+
+      # =========================
+      # CACHE (SPEED + STABILITY)
+      # =========================
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: .buildozer
+          key: buildozer-${{ runner.os }}
+
+      # =========================
+      # BUILD APK
+      # =========================
+      - name: Build APK (Debug)
+        run: |
+          buildozer -v android debug
+
+      # =========================
+      # UPLOAD APK ARTIFACT
+      # =========================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: android-apk
           path: bin/*.apk
